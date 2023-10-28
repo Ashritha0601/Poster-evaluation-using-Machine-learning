@@ -49,6 +49,8 @@ def analyze_poster_size_and_dimension(image_path):
 def analyze_image_clarity(image_path):
     img = Image.open(image_path)
     img = cvtColor(np.array(img), COLOR_BGR2GRAY)
+    if img.dtype != np.uint8:
+        img = np.uint8(img)
     clarity_score =  Laplacian(img, cv2.CV_64F).var()
     return clarity_score
 
