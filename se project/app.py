@@ -36,7 +36,8 @@ def evaluate_indentation(image_path):
     # In this example, we'll use a simple threshold-based evaluation
     img = Image.open(image_path)
     img_data = np.array(img)
-    threshold = 150  # Adjust this threshold as needed
+    mean_value = np.mean(img_data)
+    threshold = mean_value * 0.75
     indentation_score = (np.mean(img_data) <= threshold)  # Simulated result
     return indentation_score
 
