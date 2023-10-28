@@ -67,9 +67,12 @@ def analyze_clutter(image_path):
     return clutter_score
 
 def extract_text_from_image(image_path):
-    img = Image.open(image_path)
-    text = pytesseract.image_to_string(img, lang='eng+other_languages')
-    return text
+    try:
+        img = Image.open(image_path)
+        text = pytesseract.image_to_string(img, lang='eng+other_languages')
+        return text
+    except Exception as e:
+        return str(e)
 
 # Function to validate a URL
 def validate_url(url):
