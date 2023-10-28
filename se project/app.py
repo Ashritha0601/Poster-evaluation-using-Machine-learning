@@ -85,18 +85,21 @@ def validate_url(url):
         return False
     
 def qr_code_detector(image_path):
-    image = Image.open(image_path)
-    decoded_objects = decode(image)
-    if decoded_objects:
-        for obj in decoded_objects:
-            text = obj.data.decode('utf-8')
-            url_pattern = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
-
-            if re.search(url_pattern, text):
-                return True, obj.data.decode('utf-8')
-            return False, obj.data.decode('utf-8')
-    else:
-        return False, "No qr code found"
+    try:
+        image = Image.open(image_path)
+        decoded_objects = decode(image)
+        if decoded_objects:
+            for obj in decoded_objects:
+                text = obj.data.decode('utf-8')
+                url_pattern = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
+                if re.match(url_pattern, text):
+                    return True, obj.data.decode('utf-8')
+                return False, obj.data.decode('utf-8')
+        else:
+            return False, "No qr code found"
+    except Exception as e:
+        new_var = False
+        return new_var, str(e)
 
 
 @app.route("/", methods=["GET", "POST"])
