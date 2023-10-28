@@ -59,7 +59,7 @@ def analyze_clutter(image_path):
         img = cvtColor(np.array(img), COLOR_BGR2GRAY)
 
     # Use edge detection to identify edges in the image
-    edges = Canny(img, threshold1=100, threshold2=200)
+    edges = Canny(img, threshold1=10, threshold2=20)
 
     # Count the number of edge pixels as a measure of clutter
     clutter_score = np.count_nonzero(edges)
