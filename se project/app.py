@@ -25,12 +25,11 @@ if not os.path.exists(UPLOAD_FOLDER):
 
 # Function to calculate average RGB values
 def calculate_average_rgb(image_path):
-    with Image.open(image_path) as img:
-        r, g, b = img.convert("RGB").split()
+        r, g, b = Image.open(image_path).convert("RGB").split()
         r_avg = np.ceil(np.mean(r))
         g_avg = np.ceil(np.mean(g))
         b_avg = np.ceil(np.mean(b))
-    return r_avg, g_avg, b_avg
+        return r_avg, g_avg, b_avg
 
 def evaluate_indentation(image_path):
     # In this example, we'll use a simple threshold-based evaluation
