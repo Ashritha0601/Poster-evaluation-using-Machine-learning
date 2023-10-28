@@ -51,7 +51,7 @@ def analyze_image_clarity(image_path):
     img = cvtColor(np.array(img), COLOR_BGR2GRAY)
     if img.dtype != np.uint8:
         img = np.uint8(img)
-    clarity_score = Laplacian(img, cv2.CV_64F).var()
+    clarity_score = cv2.Laplacian(img, cv2.CV_64F).var()
     return clarity_score
 
 
