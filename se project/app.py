@@ -13,6 +13,7 @@ from fontTools.ttLib import TTFont
 import re
 import requests
 from pyzbar.pyzbar import decode
+import logging
 
 app = Flask(__name__)
 
@@ -96,7 +97,6 @@ def qr_code_detector(image_path):
             return False, obj.data.decode('utf-8')
     else:
         return False, "No qr code found"
-
 
 
 @app.route("/", methods=["GET", "POST"])
