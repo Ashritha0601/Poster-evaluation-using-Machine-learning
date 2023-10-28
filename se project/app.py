@@ -58,13 +58,12 @@ def analyze_clutter(image_path):
     img = Image.open(image_path)
     if img.mode == 'RGB':
         img = cvtColor(np.array(img), COLOR_BGR2GRAY)
-
-    # Use edge detection to identify edges in the image
-    edges = Canny(img, threshold1=10, threshold2=20)
-
-    # Count the number of edge pixels as a measure of clutter
-    clutter_score = np.count_nonzero(edges)
-    
+        mean_value = np.mean(img)
+        std_dev = np.std(img)
+        threshold1 = mean_value - std_dev
+        threshold2 = mean_value + std_dev
+        edges = Canny(img, threshold1=threshold1, threshold2=threshold2)
+        clutter_score = np.count_nonzero(edges)
     return clutter_score
 
 def extract_text_from_image(image_path):
