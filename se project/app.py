@@ -37,7 +37,7 @@ def evaluate_indentation(image_path):
     img = Image.open(image_path)
     img_data = np.array(img)
     threshold = 150  # Adjust this threshold as needed
-    indentation_score = (np.mean(img_data) > threshold)  # Simulated result
+    indentation_score = (np.mean(img_data) <= threshold)  # Simulated result
     return indentation_score
 
 def analyze_poster_size_and_dimension(image_path):
