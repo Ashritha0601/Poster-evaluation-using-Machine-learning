@@ -13,6 +13,7 @@ from fontTools.ttLib import TTFont
 import re
 import requests
 from pyzbar.pyzbar import decode
+import logging
 
 app = Flask(__name__)
 
@@ -84,19 +85,20 @@ def validate_url(url):
         return False
     
 def qr_code_detector(image_path):
-    image = Image.open(image_path)
-    decoded_objects = decode(image)
-    if decoded_objects:
-        for obj in decoded_objects:
-            text = obj.data.decode('utf-8')
-            url_pattern = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
+    try:
+        img = Image.open(image_path)
+        img = cvtColor(np.array(img), COLOR_BGR2GRAY)
 
-            if re.search(url_pattern, text):
-                return True, obj.data.decode('utf-8')
-            return False, obj.data.decode('utf-8')
-    else:
-        return False, "No qr code found"
+        # Use edge detection to identify edges in the image
+        edges = Canny(img, threshold1=100, threshold2=200)
 
+        # Count the number of edge pixels as a measure of clutter
+        clutter_score = np.count_nonzero(edges)
+        
+        return clutter_score
+    except Exception as e:
+        logging.error(f"An error occurred during clutter analysis: {e}")
+        return -1 
 
 
 @app.route("/", methods=["GET", "POST"])
