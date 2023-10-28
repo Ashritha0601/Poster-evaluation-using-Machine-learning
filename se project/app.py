@@ -171,7 +171,9 @@ def index():
                clutter_result=clutter_result,
                extracted_text=extracted_text,
                show_results=True)
-
+@app.route("/index")
+def initial_page():
+    return render_template('index.html')
 if __name__ == '__main__':
     app.run(debug=True, port=9860)
 
