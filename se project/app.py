@@ -47,14 +47,16 @@ def analyze_poster_size_and_dimension(image_path):
 
 def analyze_image_clarity(image_path):
     img = Image.open(image_path)
-    img = cvtColor(np.array(img), COLOR_BGR2GRAY)
+    if img.mode == 'RGB':
+        img = cvtColor(np.array(img), COLOR_BGR2GRAY)
     clarity_score = Laplacian(img, cv2.CV_64F).var()
     return clarity_score
 
 
 def analyze_clutter(image_path):
     img = Image.open(image_path)
-    img = cvtColor(np.array(img), COLOR_BGR2GRAY)
+    if img.mode == 'RGB':
+        img = cvtColor(np.array(img), COLOR_BGR2GRAY)
 
     # Use edge detection to identify edges in the image
     edges = Canny(img, threshold1=100, threshold2=200)
