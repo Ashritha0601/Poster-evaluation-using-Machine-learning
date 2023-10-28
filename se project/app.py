@@ -62,7 +62,8 @@ def analyze_clutter(image_path):
     std_dev = np.std(img)
     threshold1 = mean_value - std_dev
     threshold2 = mean_value + std_dev
-    edges = Canny(img, threshold1=threshold1, threshold2=threshold2)
+    _, thresholded = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    edges = Canny(thresholded, threshold1=threshold1, threshold2=threshold2)
     clutter_score = np.count_nonzero(edges)
     return clutter_score
 
