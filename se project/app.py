@@ -36,8 +36,8 @@ def is_valid_file_size(file_path):
 def calculate_average_rgb(image_path):
         r, g, b = Image.open(image_path).split()
         r_avg = np.ceil(np.mean(r))
-        g_avg = np.ceil(np.mean(r))
-        b_avg = np.ceil(np.mean(r))
+        g_avg = np.ceil(np.mean(g))
+        b_avg = np.ceil(np.mean(b))
         return r_avg, g_avg, b_avg
 
 def evaluate_indentation(image_path):
