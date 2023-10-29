@@ -6,12 +6,13 @@ import numpy as np
 from flask import Flask, request, render_template
 import cv2
 from cv2 import cvtColor, Laplacian, COLOR_BGR2GRAY,Canny
-import pytesseract 
+import pytesseract
 from io import BytesIO
 from fontTools.ttLib import TTFont
 import re
 import requests
 from pyzbar.pyzbar import decode
+import logging
 
 app = Flask(__name__)
 
@@ -23,51 +24,66 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
+# Define the maximum file size (in bytes)
+MAX_FILE_SIZE = 2 * 1024 * 1024  # 2 MB
+
+# Function to check if the uploaded file is within the size limit
+def is_valid_file_size(file_path):
+    return os.path.getsize(file_path) <= MAX_FILE_SIZE
+
+
 # Function to calculate average RGB values
 def calculate_average_rgb(image_path):
-    with Image.open(image_path) as img:
-        r, g, b = img.convert("RGB").split()
-        r_avg = sum(r.getdata()) // len(r.getdata())
-        g_avg = sum(g.getdata()) // len(g.getdata())
-        b_avg = sum(b.getdata()) // len(b.getdata())
-    return r_avg, g_avg, b_avg
+        r, g, b = Image.open(image_path).split()
+        r_avg = np.ceil(np.mean(r))
+        g_avg = np.ceil(np.mean(g))
+        b_avg = np.ceil(np.mean(b))
+        return r_avg, g_avg, b_avg
 
 def evaluate_indentation(image_path):
     # In this example, we'll use a simple threshold-based evaluation
     img = Image.open(image_path)
     img_data = np.array(img)
-    threshold = 150  # Adjust this threshold as needed
+    mean_value = np.mean(img_data)
+    threshold = mean_value * 0.75
     indentation_score = (np.mean(img_data) > threshold)  # Simulated result
     return indentation_score
 
 def analyze_poster_size_and_dimension(image_path):
     with Image.open(image_path) as img:
         width, height = img.size
+        if img.width > img.height:
+            width, height = height, width
     return width, height
 
 def analyze_image_clarity(image_path):
     img = Image.open(image_path)
     if img.mode == 'RGB':
         img = cvtColor(np.array(img), COLOR_BGR2GRAY)
-    clarity_score = Laplacian(img, cv2.CV_64F).var()
+    if img.dtype != np.uint8:
+        img = np.uint8(img)
+    clarity_score = cv2.Laplacian(img, cv2.CV_64F).var()
     return clarity_score
 
 def analyze_clutter(image_path):
     img = Image.open(image_path)
     img = cvtColor(np.array(img), COLOR_BGR2GRAY)
-
-    # Use edge detection to identify edges in the image
-    edges = Canny(img, threshold1=100, threshold2=200)
-
-    # Count the number of edge pixels as a measure of clutter
+    mean_value = np.mean(img)
+    std_dev = np.std(img)
+    threshold1 = mean_value - std_dev
+    threshold2 = mean_value + std_dev
+    _, thresholded = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    edges = Canny(thresholded, threshold1=threshold1, threshold2=threshold2)
     clutter_score = np.count_nonzero(edges)
-    
     return clutter_score
 
 def extract_text_from_image(image_path):
-    img = Image.open(image_path)
-    text = pytesseract.image_to_string(img)
-    return text
+    try:
+        img = Image.open(image_path)
+        text = pytesseract.image_to_string(img, lang='eng+other_languages')
+        return text
+    except Exception as e:
+        return str(e)
 
 # Function to validate a URL
 def validate_url(url):
@@ -76,20 +92,23 @@ def validate_url(url):
         return response.status_code == 200
     except requests.exceptions.RequestException:
         return False
-
+    
 def qr_code_detector(image_path):
-    image = Image.open(image_path)
-    decoded_objects = decode(image)
-    if decoded_objects:
-        for obj in decoded_objects:
-            text = obj.data.decode('utf-8')
-            url_pattern = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
-
-            if re.search(url_pattern, text):
-                return True, obj.data.decode('utf-8')
-            return False, obj.data.decode('utf-8')
-    else:
-        return False, "No qr code found"
+    try:
+        image = Image.open(image_path)
+        decoded_objects = decode(image)
+        if decoded_objects:
+            for obj in decoded_objects:
+                text = obj.data.decode('utf-8')
+                url_pattern = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
+                if re.match(url_pattern, text):
+                    return True, obj.data.decode('utf-8')
+                return False, obj.data.decode('utf-8')
+        else:
+            return False, "No qr code found"
+    except Exception as e:
+        new_var = False
+        return new_var, str(e)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'jpg', 'jpeg', 'png', 'gif', 'bmp'}
@@ -108,7 +127,7 @@ def index():
     detected_urls = []
     url_validations = []
     show_results = False
-    
+
     if request.method == "POST":
         # Check if the post request has a file part
         if 'poster' not in request.files:
@@ -123,6 +142,9 @@ def index():
             # Save the uploaded poster
             poster_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
             file.save(poster_path)
+            # Check if the file size exceeds the limit
+            if not is_valid_file_size(poster_path):
+                raise Exception("File size exceeds the limit (10 MB): Please upload a smaller file")
 
             # Calculate average RGB values
             r, g, b = calculate_average_rgb(poster_path)
@@ -137,21 +159,22 @@ def index():
 
             width, height = analyze_poster_size_and_dimension(poster_path)
             size_dimension_result = f" {width}x{height}"
-            
+
             clutter_score = analyze_clutter(poster_path)
             clutter_result = f" {clutter_score}"
-            
+
             extracted = extract_text_from_image(poster_path)
             extracted_text = f" {extracted}"
-            
-            
+
             has_qr_code, qr_code_data = qr_code_detector(poster_path)
             qr_data = qr_code_data
             if has_qr_code:
-                qr_data = f"<a href='{qr_code_data}'>{qr_code_data}</a>"
-            
-            
-            return render_template('results.html', 
+                qr_data = f"<a href='{qr_code_data}'>{qr_code_data}</a>/safe"
+
+
+
+
+            return render_template('results.html',
                                    average_rgb_result=average_rgb_result,
                                    indentation_result=indentation_result,
                                    size_dimension_result=size_dimension_result,
@@ -159,13 +182,12 @@ def index():
                                    clutter_result=clutter_result,
                                    extracted_text=extracted_text,
                                    qr_code_data=qr_code_data)
-            
-            
 
-            #return f"{average_rgb_result}<br>{indentation_result}<br>{size_dimension_result}<br>{clarity_result}<br>{clutter_result}<br>{extracted_text}<br>QR code data: {qr_data}"
-        
 
-    return render_template('index.html', 
+
+            #return f"{average_rgb_result}<br>{indentation_result}<br>{size_dimension_result}<br>{clarity_result}<br>{clutter_result}<br>{extracted_text}<br>QR code data:{qr_data}"
+
+    return render_template('index.html',
                average_rgb_result=average_rgb_result,
                indentation_result=indentation_result,
                size_dimension_result=size_dimension_result,
@@ -173,7 +195,10 @@ def index():
                clutter_result=clutter_result,
                extracted_text=extracted_text,
                show_results=True)
-
+@app.route("/index")
+def initial_page():
+    return render_template('index.html')
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=9860)
+
 
