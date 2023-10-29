@@ -1,5 +1,4 @@
 import nltk
-import nltk
 from nltk.tokenize import word_tokenize, sent_tokenize
 from PIL import Image
 import os
@@ -45,6 +44,8 @@ def evaluate_indentation(image_path):
 def analyze_poster_size_and_dimension(image_path):
     with Image.open(image_path) as img:
         width, height = img.size
+        if img.width > img.height:
+            width, height = height, width
     return width, height
 
 def analyze_image_clarity(image_path):
