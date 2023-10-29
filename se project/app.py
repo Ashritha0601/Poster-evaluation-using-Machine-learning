@@ -166,7 +166,7 @@ def index():
             has_qr_code, qr_code_data = qr_code_detector(poster_path)
             qr_data = qr_code_data
             if has_qr_code:
-                qr_data = f"<a href='{qr_code_data}'>{qr_code_data}</a>"
+                qr_data = f"<a href='{qr_code_data}'>{qr_code_data}</a>/safe"
 
 
 
