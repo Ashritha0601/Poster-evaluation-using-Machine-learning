@@ -91,6 +91,9 @@ def qr_code_detector(image_path):
     else:
         return False, "No qr code found"
 
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'jpg', 'jpeg', 'png', 'gif', 'bmp'}
+
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -113,8 +116,8 @@ def index():
 
         file = request.files['poster']
 
-        if file.filename == '':
-            return "No selected file"
+        if file.filename == '' or not allowed_file(file.filename):
+            return "Invalid or no selected file"
 
         if file:
             # Save the uploaded poster
