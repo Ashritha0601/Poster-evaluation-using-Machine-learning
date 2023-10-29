@@ -47,10 +47,10 @@ def analyze_poster_size_and_dimension(image_path):
 
 def analyze_image_clarity(image_path):
     img = Image.open(image_path)
-    img = cvtColor(np.array(img), COLOR_BGR2GRAY)
+    if img.mode == 'RGB':
+        img = cvtColor(np.array(img), COLOR_BGR2GRAY)
     clarity_score = Laplacian(img, cv2.CV_64F).var()
     return clarity_score
-
 
 def analyze_clutter(image_path):
     img = Image.open(image_path)
@@ -119,7 +119,6 @@ def index():
         if file.filename == '' or not allowed_file(file.filename):
             return "Invalid or no selected file"
 
-        # In the file upload section
         if file and allowed_file(file.filename):
             # Save the uploaded poster
             poster_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
