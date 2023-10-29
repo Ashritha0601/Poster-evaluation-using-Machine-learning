@@ -24,6 +24,14 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
+# Define the maximum file size (in bytes)
+MAX_FILE_SIZE = 2 * 1024 * 1024  # 2 MB
+
+# Function to check if the uploaded file is within the size limit
+def is_valid_file_size(file_path):
+    return os.path.getsize(file_path) <= MAX_FILE_SIZE
+
+
 # Function to calculate average RGB values
 def calculate_average_rgb(image_path):
         r, g, b = Image.open(image_path).split()
@@ -131,6 +139,9 @@ def index():
             # Save the uploaded poster
             poster_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
             file.save(poster_path)
+            # Check if the file size exceeds the limit
+            if not is_valid_file_size(poster_path):
+                raise Exception("File size exceeds the limit (10 MB): Please upload a smaller file")
 
             # Calculate average RGB values
             r, g, b = calculate_average_rgb(poster_path)
