@@ -58,12 +58,12 @@ def analyze_poster_size_and_dimension(image_path):
 
 def analyze_image_clarity(image_path):
     img = Image.open(image_path)
-    img = cvtColor(np.array(img), COLOR_BGR2GRAY)
+    if img.mode == 'RGB':
+        img = cvtColor(np.array(img), COLOR_BGR2GRAY)
     if img.dtype != np.uint8:
         img = np.uint8(img)
     clarity_score = cv2.Laplacian(img, cv2.CV_64F).var()
     return clarity_score
-
 
 def analyze_clutter(image_path):
     img = Image.open(image_path)
@@ -110,6 +110,9 @@ def qr_code_detector(image_path):
         new_var = False
         return new_var, str(e)
 
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'jpg', 'jpeg', 'png', 'gif', 'bmp'}
+
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -132,10 +135,10 @@ def index():
 
         file = request.files['poster']
 
-        if file.filename == '':
-            return "No selected file"
+        if file.filename == '' or not allowed_file(file.filename):
+            return "Invalid or no selected file"
 
-        if file:
+        if file and allowed_file(file.filename):
             # Save the uploaded poster
             poster_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
             file.save(poster_path)
