@@ -195,6 +195,19 @@ def perform_sentiment_analysis(text):
     sentiment_score = analysis.sentiment.polarity
     return sentiment_score
 
+def logo_detection(image_path):
+    image = cv2.imread(image_path)
+    im1 = int(0.1 * image.shape[0])
+    region = image[:im1, -1*im1:]
+    gray_logo = cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)
+    _, binary_logo = cv2.threshold(gray_logo, 128, 255, cv2.THRESH_BINARY)
+    logo_score = cv2.countNonZero(binary_logo)
+
+    if logo_score>10000:
+        return "Logo not Detected"
+    else:
+        return "Logo Detected"
+
 def extract_text_and_font_size(image_path):
     try:
         extracted_text = pytesseract.image_to_string(Image.open(image_path), lang='eng')
@@ -232,6 +245,7 @@ def index():
     color_palette=[]
     sentiment_score = 0
     sentiment_result = ""
+    logo=""
     
 
 
@@ -256,6 +270,9 @@ def index():
             # Calculate average RGB values
             r, g, b = calculate_average_rgb(poster_path)
             average_rgb_result = f" ({r}, {g}, {b})"
+
+            logo = logo_detection(poster_path)
+            logo= f"{logo}"
         
             # Evaluate indentation (replace with actual model prediction)
             indentation_score = evaluate_indentation(poster_path)
@@ -283,6 +300,7 @@ def index():
             hsym=f"{ horizontal}"
             vertical=analyze_vertical_symmetry(poster_path)
             vsym=f"{ vertical}"
+
 
             bal=analyze_balance(poster_path)
             balance=f"{bal}"
@@ -323,6 +341,7 @@ def index():
                                    balance=balance,
                                    color_palette=color_palette,
                                    sentiment_result=sentiment_result,
+                                   logo=logo,
                                    )
 
 
@@ -344,6 +363,7 @@ def index():
                balance=balance,
                color_palette=color_palette,
                sentiment_result=sentiment_result,
+               logo=logo,
                show_results=True)
 @app.route("/index")
 def initial_page():
