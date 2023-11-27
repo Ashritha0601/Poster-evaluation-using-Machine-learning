@@ -62,7 +62,7 @@ def analyze_poster_size_and_dimension(image_path):
     with Image.open(image_path) as img:
         width, height = img.size
         if img.width > img.height:
-            width, height = height, width
+            width, height = width,height
     return width, height
 
 def analyze_image_clarity(image_path):
@@ -150,10 +150,13 @@ def analyze_horizontal_symmetry(image_path):
     height, width, _ = img.shape
     top_half = img[0:height // 2, :]
     bottom_half = img[height // 2:, :]
+    if top_half.shape != bottom_half.shape:
+        bottom_half = cv2.resize(bottom_half, (top_half.shape[1], top_half.shape[0]))   
     bottom_half_flipped = cv2.flip(bottom_half, 0)
     diff = cv2.absdiff(top_half, bottom_half_flipped)
     hsymmetry_score = np.mean(diff)
     return hsymmetry_score
+
 
 def analyze_vertical_symmetry(image_path):
     img = cv2.imread(image_path)
@@ -184,6 +187,13 @@ def extract_color_palette(image_path, num_colors=5):
     kmeans.fit(pixels)
     dominant_colors = kmeans.cluster_centers_.astype(int)
     return dominant_colors
+
+from textblob import TextBlob 
+
+def perform_sentiment_analysis(text):
+    analysis = TextBlob(text)
+    sentiment_score = analysis.sentiment.polarity
+    return sentiment_score
 
 def extract_text_and_font_size(image_path):
     try:
@@ -220,6 +230,8 @@ def index():
     vsym=""
     balance=""
     color_palette=[]
+    sentiment_score = 0
+    sentiment_result = ""
     
 
 
@@ -275,6 +287,16 @@ def index():
             bal=analyze_balance(poster_path)
             balance=f"{bal}"
 
+            sentiment_score = perform_sentiment_analysis(poster_path)
+            if sentiment_score > 0:
+                sentiment_result = "Positive"
+            elif sentiment_score < 0:
+                sentiment_result = "Negative"
+            else:
+                sentiment_result = "Neutral"
+
+
+
             color_palette = extract_color_palette(poster_path, num_colors=5)
 
             has_qr_code, qr_code_data = qr_code_detector(poster_path)
@@ -300,6 +322,7 @@ def index():
                                    vsym=vsym,
                                    balance=balance,
                                    color_palette=color_palette,
+                                   sentiment_result=sentiment_result,
                                    )
 
 
@@ -320,6 +343,7 @@ def index():
                vsym=vsym,
                balance=balance,
                color_palette=color_palette,
+               sentiment_result=sentiment_result,
                show_results=True)
 @app.route("/index")
 def initial_page():
