@@ -9,4 +9,4 @@ poster evaluation features :
 5. QR Code evaluation
 6. Poster size
 7. Extracted text from image
-Hosted website -http://harrypotter97.pythonanywhere.com/
+Hosted website https://harrypotter99.pythonanywhere.com/
