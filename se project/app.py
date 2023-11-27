@@ -5,7 +5,7 @@ import os
 import numpy as np
 from flask import Flask, request, render_template
 import cv2
-from cv2 import cvtColor, Laplacian, COLOR_BGR2GRAY,Canny
+from cv2 import cvtColor, Laplacian, COLOR_BGR2GRAY,Canny,COLOR_BGR2RGB
 import pytesseract
 from io import BytesIO
 from fontTools.ttLib import TTFont
@@ -13,6 +13,9 @@ import re
 import requests
 from pyzbar.pyzbar import decode
 import logging
+import sklearn
+from sklearn.cluster import KMeans
+
 
 app = Flask(__name__)
 
@@ -24,12 +27,18 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
+
 # Define the maximum file size (in bytes)
-MAX_FILE_SIZE = 2 * 1024 * 1024  # 2 MB
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 2 MB
 
 # Function to check if the uploaded file is within the size limit
 def is_valid_file_size(file_path):
     return os.path.getsize(file_path) <= MAX_FILE_SIZE
+
+# Function to check if the filename extension is allowed
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'jpg', 'jpeg', 'png', 'gif', 'bmp'}
+
 
 
 # Function to calculate average RGB values
@@ -109,10 +118,87 @@ def qr_code_detector(image_path):
     except Exception as e:
         new_var = False
         return new_var, str(e)
+def extract_links_from_image(image_path):
+    image = cv2.imread(image_path)
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    text = pytesseract.image_to_string(gray, lang='eng')
+    url_regex = r'https?://\S+|www\.\S+'
+    links = re.findall(url_regex, text)
+    return links
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'jpg', 'jpeg', 'png', 'gif', 'bmp'}
+from langdetect import detect
+from langdetect.detector_factory import DetectorFactory
+DetectorFactory.seed = 0
 
+# Update extract_text_from_image function
+def extract_lang_from_image(image_path):
+    try:
+        img = Image.open(image_path)
+        text = pytesseract.image_to_string(img, lang='eng+other_languages')
+        
+        # Identify the language of the extracted text
+        detected_language = detect(text)
+        
+        return detected_language
+    except Exception as e:
+        return str(e), None
+import cv2
+import numpy as np
+
+def analyze_horizontal_symmetry(image_path):
+    img = cv2.imread(image_path)
+    height, width, _ = img.shape
+    top_half = img[0:height // 2, :]
+    bottom_half = img[height // 2:, :]
+    bottom_half_flipped = cv2.flip(bottom_half, 0)
+    diff = cv2.absdiff(top_half, bottom_half_flipped)
+    hsymmetry_score = np.mean(diff)
+    return hsymmetry_score
+
+def analyze_vertical_symmetry(image_path):
+    img = cv2.imread(image_path)
+    height, width, _ = img.shape
+    left_half = img[:, 0:width // 2]
+    right_half = img[:, width // 2:]
+    right_half_flipped = cv2.flip(right_half, 1)
+    diff = cv2.absdiff(left_half, right_half_flipped)
+    vsymmetry_score = np.mean(diff)
+    return vsymmetry_score
+
+def analyze_balance(image_path):
+    img = cv2.imread(image_path)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    height, width = gray.shape[:2]
+    left_segment = gray[:, :width // 2]
+    right_segment = gray[:, width // 2:]
+    left_intensity = cv2.mean(left_segment)[0]
+    right_intensity = cv2.mean(right_segment)[0]
+    balance_score = abs(left_intensity - right_intensity)
+    return balance_score
+
+def extract_color_palette(image_path, num_colors=5):
+    img = cv2.imread(image_path)
+    img = cvtColor(img, COLOR_BGR2RGB)
+    pixels = img.reshape((-1, 3))
+    kmeans = KMeans(n_clusters=num_colors, random_state=42, n_init=10)
+    kmeans.fit(pixels)
+    dominant_colors = kmeans.cluster_centers_.astype(int)
+    return dominant_colors
+
+def extract_text_and_font_size(image_path):
+    try:
+        extracted_text = pytesseract.image_to_string(Image.open(image_path), lang='eng')
+        font_size_pattern = r'\b(\d+(\.\d+)?)\s*(pt|px|pts|pixels)\b'
+        font_size_matches = re.findall(font_size_pattern, extracted_text, re.IGNORECASE)
+        font_sizes = [float(match[0]) for match in font_size_matches]
+        if font_sizes:
+            average_font_size = np.mean(font_sizes)
+        else:
+            average_font_size = 0
+
+        return extracted_text, average_font_size
+    except Exception as e:
+        return str(e), 0
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -127,6 +213,15 @@ def index():
     detected_urls = []
     url_validations = []
     show_results = False
+    font_size_result = ""
+    link_result=""
+    lang_result=""
+    hsym=""
+    vsym=""
+    balance=""
+    color_palette=[]
+    
+
 
     if request.method == "POST":
         # Check if the post request has a file part
@@ -149,7 +244,7 @@ def index():
             # Calculate average RGB values
             r, g, b = calculate_average_rgb(poster_path)
             average_rgb_result = f" ({r}, {g}, {b})"
-
+        
             # Evaluate indentation (replace with actual model prediction)
             indentation_score = evaluate_indentation(poster_path)
             indentation_result = f"{indentation_score}"
@@ -166,13 +261,29 @@ def index():
             extracted = extract_text_from_image(poster_path)
             extracted_text = f" {extracted}"
 
+            extracted1=extract_links_from_image(poster_path)
+            link_result=f" {extracted1}"
+
+            lang=extract_lang_from_image(poster_path)
+            lang_result=f" {lang}"
+
+            horizontal=analyze_horizontal_symmetry(poster_path)
+            hsym=f"{ horizontal}"
+            vertical=analyze_vertical_symmetry(poster_path)
+            vsym=f"{ vertical}"
+
+            bal=analyze_balance(poster_path)
+            balance=f"{bal}"
+
+            color_palette = extract_color_palette(poster_path, num_colors=5)
+
             has_qr_code, qr_code_data = qr_code_detector(poster_path)
             qr_data = qr_code_data
             if has_qr_code:
                 qr_data = f"<a href='{qr_code_data}'>{qr_code_data}</a>/safe"
 
 
-
+            extracted_text, font_size_result = extract_text_and_font_size(poster_path)
 
             return render_template('results.html',
                                    average_rgb_result=average_rgb_result,
@@ -181,7 +292,15 @@ def index():
                                    clarity_result=clarity_result,
                                    clutter_result=clutter_result,
                                    extracted_text=extracted_text,
-                                   qr_code_data=qr_code_data)
+                                   qr_code_data=qr_code_data,
+                                   font_size_result=font_size_result, 
+                                   link_result=link_result,
+                                   lang_result=lang_result,
+                                   hsym=hsym,
+                                   vsym=vsym,
+                                   balance=balance,
+                                   color_palette=color_palette,
+                                   )
 
 
 
@@ -194,11 +313,17 @@ def index():
                clarity_result=clarity_result,
                clutter_result=clutter_result,
                extracted_text=extracted_text,
+               font_size_result=font_size_result,
+               link_result=link_result,
+               lang_result=lang_result,
+               hsym=hsym,
+               vsym=vsym,
+               balance=balance,
+               color_palette=color_palette,
                show_results=True)
 @app.route("/index")
 def initial_page():
     return render_template('index.html')
 if __name__ == '__main__':
     app.run(debug=True, port=9860)
-
 
