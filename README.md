@@ -10,3 +10,5 @@ poster evaluation features :
 6. Poster size
 7. Extracted text from image
 Hosted website https://harrypotter99.pythonanywhere.com/
+https://harrypotter77.pythonanywhere.com/
+due to overload the features are hosted on two websites seperately
