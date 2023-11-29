@@ -208,21 +208,6 @@ def logo_detection(image_path):
     else:
         return "Logo Detected"
 
-def extract_text_and_font_size(image_path):
-    try:
-        extracted_text = pytesseract.image_to_string(Image.open(image_path), lang='eng')
-        font_size_pattern = r'\b(\d+(\.\d+)?)\s*(pt|px|pts|pixels)\b'
-        font_size_matches = re.findall(font_size_pattern, extracted_text, re.IGNORECASE)
-        font_sizes = [float(match[0]) for match in font_size_matches]
-        if font_sizes:
-            average_font_size = np.mean(font_sizes)
-        else:
-            average_font_size = 0
-
-        return extracted_text, average_font_size
-    except Exception as e:
-        return str(e), 0
-
 @app.route("/", methods=["GET", "POST"])
 def index():
     average_rgb_result = ""  # Initialize with an empty string
